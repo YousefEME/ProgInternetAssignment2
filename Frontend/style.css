@@ -1,4 +1,4 @@
-.h1, .title, .subtitle { /* the title and slogan centered in the middle, the yellow text is to represent the "flash" in the name CardFlash */
+h1, .title, .subtitle { /* the title and slogan centered in the middle, the yellow text is to represent the "flash" in the name CardFlash */
 
     text-align: center;
     padding: 5px;
