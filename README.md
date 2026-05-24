@@ -1,43 +1,88 @@
-## How to Run
+# CardFlash
 
-1. Start the backend:
-   cd Backend,
-   node server.js
-   go into .env file and put in your own root password to connect the MySQL.
-   If you cannot remember your password plesae use mysql -u root -p
+CardFlash is a simple flashcard learning app for creating, searching, editing, deleting, and studying flashcards in the browser. It extends the Assignment 1 idea into a dynamic single-page app with a Node.js backend and MySQL database.
 
-3. Open the frontend:
-   Open index.html in browser
+## Features
 
-4. Ensure MySQL is running with the flashcard_app database
-   
+- Registration and login with hashed passwords and signed JWT-style tokens.
+- Live search that filters flashcards immediately while the user types.
+- Full CRUD operations for flashcards: create, read, update, and delete.
+- Activity/history tracking for user actions such as login, create, update, delete, and card views.
+- Admin account can view all user activity; student accounts can view their own activity.
+- Interface updates immediately after adding, editing, or deleting without refreshing the page.
 
-Checklist
-----------------------------------------------------------------------------------------------------
+## Technical Stack
 
-1. Project:
-CardFlash, the Flashcard app ready to use in a flash!
+- Frontend: HTML, CSS, and vanilla JavaScript.
+- Backend: Node.js, Express, CORS, dotenv, and mysql2.
+- Database: MySQL.
+- Authentication: PBKDF2 password hashing using Node crypto and signed tokens.
 
-2. Overview:
-CardFlash is a flashcard app that lets you create your own flashcards seamlessly, allowing you to cycle through your content for studying, learning a new language or just testing your memory!
+## How To Run
 
-3. Technical Stack:
-CardFlash was created with HTML, CSS and JavaScript for the frontend, Node.js for the backend, styled with CSS using Flexbox, MySQL for the database, version control with GitHub and GitHub Desktop. 
+1. Import the database:
 
-4. Features:
-- Create flashcards with questions and answers by pressing the Add Flashcard Button
-- Flip to reveal answer on flashcard
-- Cycle to next flashcard by clicking Next button and go to previous flashcard by clicking Previous button
-- Current flashcard removed when pressing next button
-- Delete flashcards with Delete Button 
-- Flashcard counter to count total flashcards 
-- Clean and responsive interface
+```sql
+SOURCE Backend/Assessment1Database.sql;
+```
 
-5. Folder Structure:
-There are two folders, Frontend and Backend. Frontend contains the HTML, CSS and Javascript files. The backend contains the server.js file, package.json, package-lock.json and node_modules. 
+2. Create or update `Backend/.env`:
 
-6. Challenges faced:
-There were numerous challenges faced when creating this project, the first and most apparent one being synchronising the frontend and backend. Initially the flashcards were simply hardcoded into the html, however I needed to make it dynamic, so by using fetch() in javascript to send requests to node.js which storesand retrieves the flashcards from the MySQL databse. 
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=your_mysql_password
+DB_NAME=flashcard_app
+JWT_SECRET=choose-a-secret-value
+```
 
-I also had trouble making the card disappear after clicking the Next button, as it would be deleted from the database as well. I also needed to make sure the counter was working properly and I wanted the logic to work so that if there is only one flashcard available, pressing the next button would not delete the flashcard. 
+3. Start the backend:
 
+```bash
+cd Backend
+npm install
+npm run dev
+```
+
+4. In a second terminal, start the frontend:
+
+```bash
+cd Frontend
+npm run dev
+```
+
+5. Open the app:
+
+```text
+http://localhost:8080
+```
+
+The backend runs on `http://localhost:3000`.
+
+## Demo Accounts
+
+- Admin: `admin` / `password123`
+- Student: `student` / `password123`
+
+## Folder Structure
+
+- `Backend/server.js`: Express API, authentication, flashcard CRUD routes, and activity routes.
+- `Backend/Assessment1Database.sql`: MySQL database export with tables and seed data.
+- `Backend/package.json`: Backend dependencies and start script.
+- `Frontend/index.html`: Single HTML page for login and the app interface.
+- `Frontend/script.js`: Frontend state, API requests, live search, and immediate UI updates.
+- `Frontend/style.css`: Styling and responsive layout.
+
+## Entity Summary
+
+- `users`: stores registered users, password hashes, roles, and creation time.
+- `flashcards`: stores flashcard questions and answers.
+- `view_history`: stores login, registration, CRUD, and study activity.
+
+## Workload Allocation
+
+Update this section with your group member names before submission.
+
+- Member 1: frontend interface, `Frontend/index.html`, `Frontend/style.css`, `Frontend/script.js`.
+- Member 2: backend API and database, `Backend/server.js`, `Backend/Assessment1Database.sql`.
+- Member 3: README, testing, demo preparation.
