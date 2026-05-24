@@ -3,29 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css"> <!-- link to css file-->
-    <script src="script.js" defer></script> <!-- link to javascript file-->
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
     <title>CardFlash</title>
-
 </head>
-
 <body>
-    <img src="CardFlash Logo.png" alt="Cardflash Logo"> <!-- logo i created in piskel-->
-    <h1 class="title">CardFlash</h1> <!-- title i came up with and the slogan below-->
-    <p class="subtitle">Memorise flashcards in a flash</p>
-    <div class="add-flashcard">
-        <input type="text" id="new-question" placeholder="Enter question">
-        <input type="text" id="new-answer" placeholder="Enter answer">
-        <button onclick="addFlashcard()">Add Flashcard</button> <!-- add flashcard button at the top as that is the main feature of this website-->
-    </div>
+    <header class="topbar">
+        <img src="CardFlash Logo.png" alt="Cardflash Logo">
+        <div>
+            <h1 class="title">CardFlash</h1>
+            <p class="subtitle">Memorise flashcards in a flash</p>
+        </div>
+        <button id="logout-button" class="secondary-button hidden" type="button">Logout</button>
+    </header>
 
-    <div class="flashcard-container" id="container"></div>
-    <div id="counter">Total cards: 0</div> <!-- counter to count how many flashcards there are in total-->
-    <div class="controls"> <!-- buttons to switch through flashcards, previous button will cycle through cards from the front to the end, 
-        next will switch to the next card but the current card will be removed, delete deletes the current card-->
-        <button onclick="prevFlashcard()">Previous</button>
-        <button onclick="nextFlashcard()">Next</button>
-        <button onclick="deleteFlashcard()">Delete</button>
-    </div>
+    <main>
+        <section id="auth-view" class="panel auth-panel">
+            <h2>Login</h2>
+            <p class="muted">Use the seeded account or register a new student account.</p>
+            <form id="auth-form">
+                <input type="text" id="username" placeholder="Username" autocomplete="username" required>
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+                <div class="button-row">
+                    <button id="login-button" type="submit">Login</button>
+                    <button id="register-button" class="secondary-button" type="button">Register</button>
+                </div>
+            </form>
+            <p class="hint">Demo login: admin / password123 or student / password123</p>
+            <p id="auth-message" class="message"></p>
+        </section>
 
-</body></html>
+        <section id="app-view" class="hidden">
+            <div class="toolbar">
+                <div>
+                    <p id="welcome"></p>
+                    <p id="counter">Total cards: 0</p>
+                </div>
+                <input type="search" id="search-input" placeholder="Search flashcards">
+            </div>
+
+            <section class="panel">
+                <h2>Add or edit a flashcard</h2>
+                <form id="card-form" class="card-form">
+                    <input type="hidden" id="editing-id">
+                    <input type="text" id="new-question" placeholder="Enter question" required>
+                    <input type="text" id="new-answer" placeholder="Enter answer" required>
+                    <button id="save-card-button" type="submit">Add Flashcard</button>
+                    <button id="cancel-edit-button" class="secondary-button hidden" type="button">Cancel Edit</button>
+                </form>
+                <p id="card-message" class="message"></p>
+            </section>
+
+            <section class="study-layout">
+                <div>
+                    <div class="flashcard-container" id="container"></div>
+                    <div class="controls">
+                        <button id="prev-button" type="button">Previous</button>
+                        <button id="next-button" type="button">Next</button>
+                    </div>
+                </div>
+
+                <aside class="panel side-panel">
+                    <h2>Flashcard List</h2>
+                    <div id="card-list" class="card-list"></div>
+                </aside>
+            </section>
+
+            <section class="panel">
+                <h2 id="history-title">My Activity</h2>
+                <div id="history-list" class="history-list"></div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>
