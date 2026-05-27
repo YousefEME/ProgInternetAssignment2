@@ -3,14 +3,14 @@
 
 const API_URL = 'http://localhost:3000';
 
-// App state management
+// keeping track of who is logged in, what cards are loaded, and where we are in the study session
 let currentUser = JSON.parse(localStorage.getItem('cardflashUser') || 'null');
 let token = localStorage.getItem('cardflashToken');
 let cards = [];
 let currentFlashcardIndex = 0;
 let searchTerm = '';
 
-// Auth & layout DOM elements
+// grabbing all the DOM elements we need upfront so we're not querying the DOM repeatedly
 const authView = document.getElementById('auth-view');
 const appView = document.getElementById('app-view');
 const loginForm = document.getElementById('login-form');
@@ -41,13 +41,14 @@ const historyTitle = document.getElementById('history-title');
 const summaryTitle = document.getElementById('summary-title');
 const summaryList = document.getElementById('summary-list');
 
-// Custom delete confirmation modal DOM elements
+// modal elements and a variable to remember which card the user is trying to delete
 const deleteModal = document.getElementById('delete-modal');
 const confirmDeleteButton = document.getElementById('confirm-delete-button');
 const cancelDeleteButton = document.getElementById('cancel-delete-button');
 let cardIdToDelete = null;
 
-// Decks Configuration
+// deck state - selectedDeckId defaults to 'all' so everything shows on first load
+// isUpdatingStatus prevents double clicks when saving progress to the backend
 let decks = [];
 let selectedDeckId = 'all';
 let isUpdatingStatus = false;
@@ -57,6 +58,7 @@ const deckForm = document.getElementById('deck-form');
 const newDeckNameInput = document.getElementById('new-deck-name');
 const cardDeckSelect = document.getElementById('card-deck-select');
 
+// fetches decks from the backend and populates both the filter dropdown and the card form select
 async function loadDecks() {
     try {
         decks = await apiRequest('/decks');
@@ -66,6 +68,7 @@ async function loadDecks() {
     }
 }
 
+// rebuilds both deck dropdowns while preserving whatever the user had selected before
 function renderDeckSelects() {
     const currentFilterValue = deckFilter.value;
     deckFilter.innerHTML = `
@@ -83,6 +86,7 @@ function renderDeckSelects() {
     cardDeckSelect.value = currentSelectValue || '';
 }
 
+// creates a new deck and immediately switches the filter to it so the user can see it
 async function createDeck(event) {
     event.preventDefault();
     const name = newDeckNameInput.value.trim();
@@ -104,11 +108,13 @@ async function createDeck(event) {
     }
 }
 
+// shows the delete confirmation modal and remembers which card id we're about to delete
 function openDeleteModal(id) {
     cardIdToDelete = id;
     deleteModal.classList.remove('hidden');
 }
 
+// hides the modal and clears the stored id so we don't accidentally delete the wrong card
 function closeDeleteModal() {
     cardIdToDelete = null;
     deleteModal.classList.add('hidden');
@@ -164,6 +170,7 @@ function showApp() {
 
     if (isLoggedIn) {
         welcome.textContent = `Logged in as ${currentUser.username} (${currentUser.role})`;
+        // admins see all students' history, students only see their own
         historyTitle.textContent = currentUser.role === 'admin' ? 'All Students Learning History' : 'My Learning History';
         summaryTitle.textContent = currentUser.role === 'admin' ? 'Student Progress Summary' : 'My Progress Summary';
         loadDecks();
@@ -207,6 +214,7 @@ async function register(event) {
         });
         registerForm.reset();
         switchAuthMode('login');
+        // pre-fill the username so the user doesn't have to type it again
         loginUsernameInput.value = newUsername;
         showMessage(authMessage, data.message || 'Account created. Please login.');
     } catch (err) {
@@ -222,6 +230,7 @@ function saveSession(data) {
     localStorage.setItem('cardflashUser', JSON.stringify(currentUser));
 }
 
+// clears everything from memory and storage so the next user starts fresh
 function logout() {
     token = null;
     currentUser = null;
@@ -231,6 +240,7 @@ function logout() {
     showApp();
 }
 
+// fetches cards from the backend applying the current search term and deck filter
 async function loadCards() {
     try {
         let url = `/cards?search=${encodeURIComponent(searchTerm)}`;
@@ -245,9 +255,11 @@ async function loadCards() {
     }
 }
 
+// builds both the flashcard carousel and the list view from the current cards array
 function renderCards() {
     container.innerHTML = '';
     cardList.innerHTML = '';
+    // only show the study controls if there are cards and the user is a student
     const canStudy = cards.length > 0 && currentUser?.role === 'student';
     studyActions.classList.toggle('hidden', !canStudy);
 
@@ -259,6 +271,7 @@ function renderCards() {
     }
 
     cards.forEach((card, index) => {
+        // each flashcard is a button so it's keyboard accessible and flips on click
         const flashcard = document.createElement('button');
         flashcard.className = `flashcard ${index === currentFlashcardIndex ? 'active' : ''}`;
         flashcard.type = 'button';
@@ -282,6 +295,7 @@ function renderCards() {
         });
         container.appendChild(flashcard);
 
+        // look up the deck name to show as a badge, or show nothing if unassigned
         const deck = decks.find(d => d.id === card.deck_id);
         const deckBadge = deck ? `<span class="card-deck-badge">${escapeHtml(deck.name)}</span>` : '';
 
@@ -311,12 +325,14 @@ function renderCards() {
     updateStudyButtonsState();
 }
 
+// disables or highlights the known/not known buttons based on what status the current card already has
 function updateStudyButtonsState() {
     const knownBtn = document.getElementById('known-button');
     const notKnownBtn = document.getElementById('not-known-button');
 
     if (!knownBtn || !notKnownBtn) return;
 
+    // disable both while a save is in progress to prevent double submits
     if (isUpdatingStatus) {
         knownBtn.disabled = true;
         notKnownBtn.disabled = true;
@@ -330,6 +346,7 @@ function updateStudyButtonsState() {
         return;
     }
 
+    // disable whichever button matches the current status so the user can't re-submit the same value
     if (card.learning_status === 'known') {
         knownBtn.disabled = true;
         knownBtn.classList.add('selected');
@@ -348,6 +365,7 @@ function updateStudyButtonsState() {
     }
 }
 
+// sends the student's known/not known choice to the backend and updates the card in memory immediately
 async function recordProgress(status) {
     const card = cards[currentFlashcardIndex];
     if (!card || currentUser?.role !== 'student' || isUpdatingStatus) return;
@@ -374,10 +392,12 @@ async function recordProgress(status) {
     } catch (err) {
         showMessage(cardMessage, err.message, true);
     } finally {
+        // always re-enable the buttons even if something went wrong
         isUpdatingStatus = false;
         updateStudyButtonsState();
     }
 }
+
 //show flashcard based on the index and reset the flip state when navigating between cards. Also updates the state of the study buttons based on the learning status of the currently displayed card.
 function showFlashcard(index) {
     const flashcards = document.querySelectorAll('.flashcard');
@@ -387,6 +407,7 @@ function showFlashcard(index) {
     });
     updateStudyButtonsState();
 }
+
 //next flashcard function increments the current flashcard index and wraps around to the beginning of the list when reaching the end. It also resets the study note input and calls showFlashcard to update the display.
 function nextFlashcard() {
     if (!cards.length) return;
@@ -394,6 +415,7 @@ function nextFlashcard() {
     studyNoteInput.value = '';
     showFlashcard(currentFlashcardIndex);
 }
+
 //function for previous flashcard
 function prevFlashcard() {
     if (!cards.length) return;
@@ -401,7 +423,8 @@ function prevFlashcard() {
     studyNoteInput.value = '';
     showFlashcard(currentFlashcardIndex);
 }
-//handles creating new flashcards and ediitng existing ones
+
+//handles creating new flashcards and editing existing ones
 async function saveFlashcard(event) {
     event.preventDefault();
 
@@ -421,6 +444,7 @@ async function saveFlashcard(event) {
                 method: 'PUT',
                 body: JSON.stringify({ question, answer, deck_id })
             });
+            // update just the changed card in the array rather than reloading everything
             cards = cards.map(card => card.id === updatedCard.id ? { ...card, ...updatedCard } : card);
             showMessage(cardMessage, 'Flashcard updated.');
         } else {
@@ -428,6 +452,7 @@ async function saveFlashcard(event) {
                 method: 'POST',
                 body: JSON.stringify({ question, answer, deck_id })
             });
+            // only add the new card to the local list if it matches the current filter
             const matchesDeck = selectedDeckId === 'all' || 
                                 (selectedDeckId === 'none' && !createdCard.deck_id) || 
                                 selectedDeckId === String(createdCard.deck_id);
@@ -445,6 +470,7 @@ async function saveFlashcard(event) {
     }
 }
 
+// populates the form with the card's existing values so the user can make changes
 function startEdit(card) {
     editingIdInput.value = card.id;
     questionInput.value = card.question;
@@ -455,6 +481,7 @@ function startEdit(card) {
     questionInput.focus();
 }
 
+// clears the form and resets it back to "add new card" mode
 function resetCardForm() {
     cardForm.reset();
     editingIdInput.value = '';
@@ -462,6 +489,7 @@ function resetCardForm() {
     saveCardButton.textContent = 'Add Flashcard';
     cancelEditButton.classList.add('hidden');
 }
+
 // Deletes a flashcard after confirming the action in the custom modal. It also ensures that the current flashcard index is adjusted if necessary to prevent out-of-bounds errors when navigating through the remaining cards.
 async function deleteFlashcard(id) {
     try {
@@ -475,6 +503,7 @@ async function deleteFlashcard(id) {
         showMessage(cardMessage, err.message, true);
     }
 }
+
 //loads learning history for current user or all students if admin. It also renders a summary of progress based on the history data, showing counts of known and not known cards, and updates the history list with details of each action taken by the student(s).
 async function loadHistory() {
     const endpoint = currentUser?.role === 'admin' ? '/admin/history' : '/history';
@@ -497,6 +526,7 @@ async function loadHistory() {
         historyList.innerHTML = `<p class="message error">${escapeHtml(err.message)}</p>`;
     }
 }
+
 // Renders a summary of student progress based on the learning history data. For admins, it shows a summary for each student, while for regular students it shows their overall progress with counts of known and not known cards, along with tips based on their performance.
 async function renderSummary(history) {
     if (currentUser?.role === 'admin') {
@@ -514,6 +544,7 @@ async function renderSummary(history) {
         return;
     }
 
+    // for students, deduplicate by card so we only count the most recent status per card
     const latestByCard = new Map();
     history
         .filter(item => item.action === 'practice' && item.question)
@@ -537,12 +568,14 @@ async function renderSummary(history) {
     `;
 }
 
+// returns a coloured badge element based on whether the card is known, not known, or unmarked
 function renderStatusBadge(status) {
     if (status === 'known') return '<span class="status-badge known">Known</span>';
     if (status === 'not_known') return '<span class="status-badge not-known">Need practice</span>';
     return '<span class="status-badge neutral">Not marked</span>';
 }
 
+// maps raw action strings from the backend to friendlier labels for the history list
 function formatAction(action) {
     if (action === 'practice') return 'studied';
     return action;
@@ -552,11 +585,13 @@ function updateCounter(count) {
     document.getElementById('counter').textContent = `Total cards: ${count}`;
 }
 
+// checks whether a card's question or answer contains the current search term
 function matchesSearch(card) {
     const value = searchTerm.toLowerCase();
     return card.question.toLowerCase().includes(value) || card.answer.toLowerCase().includes(value);
 }
 
+// sanitises any user-generated text before injecting it into the DOM to prevent XSS
 function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
@@ -566,22 +601,30 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+// auth button listeners
 showLoginButton.addEventListener('click', () => switchAuthMode('login'));
 showRegisterButton.addEventListener('click', () => switchAuthMode('register'));
 loginForm.addEventListener('submit', login);
 registerForm.addEventListener('submit', register);
 logoutButton.addEventListener('click', logout);
+
+// card form listeners
 cardForm.addEventListener('submit', saveFlashcard);
 cancelEditButton.addEventListener('click', resetCardForm);
+
+// study mode navigation and progress buttons
 document.getElementById('next-button').addEventListener('click', nextFlashcard);
 document.getElementById('prev-button').addEventListener('click', prevFlashcard);
 document.getElementById('known-button').addEventListener('click', () => recordProgress('known'));
 document.getElementById('not-known-button').addEventListener('click', () => recordProgress('not_known'));
+
+// live search - reloads cards on every keystroke
 searchInput.addEventListener('input', () => {
     searchTerm = searchInput.value.trim();
     loadCards();
 });
 
+// delete modal listeners
 cancelDeleteButton.addEventListener('click', closeDeleteModal);
 confirmDeleteButton.addEventListener('click', async () => {
     if (cardIdToDelete !== null) {
@@ -590,6 +633,7 @@ confirmDeleteButton.addEventListener('click', async () => {
         await deleteFlashcard(id);
     }
 });
+
 // Deck-related event listeners for creating new decks and filtering cards by selected deck
 deckForm.addEventListener('submit', createDeck);
 deckFilter.addEventListener('change', () => {
@@ -597,4 +641,5 @@ deckFilter.addEventListener('change', () => {
     loadCards();
 });
 
+// kick everything off by checking if there's already a session saved from a previous visit
 showApp();

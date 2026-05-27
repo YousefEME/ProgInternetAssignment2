@@ -1,32 +1,128 @@
 # CardFlash
 
-CardFlash is a simple flashcard learning app for creating, searching, editing, deleting, and studying flashcards in the browser. It extends the Assignment 1 idea into a dynamic single page app with a Node.js backend and MySQL database.
+CardFlash is a flashcard learning web application that allows students to create, organise, search, edit, delete, and study flashcards in a responsive single-page interface.
 
-## Features
+The application was designed to solve the problem of inefficient flashcard study systems by providing:
+- fast flashcard management,
+- live search,
+- deck organisation,
+- learning progress tracking,
+- and role-based admin monitoring.
 
-- Registration and login with hashed passwords and signed JWT-style tokens. New students register first, then login separately.
-- Live search that filters flashcards immediately while the user types.
-- Full CRUD operations for flashcards: create, read, update, and delete.
-- Learning history tracking for card reveals, Known, Need Practice, and optional study notes.
-- Admin account can view all students' learning history and latest progress summaries; admin study clicks are not counted as student learning.
-- Interface updates immediately after adding, editing, or deleting without refreshing the page.
+The project extends the Assignment 1 concept into a complete full-stack web application using a Node.js backend and MySQL database.
 
-## Technical Stack
+---
 
-- Frontend: HTML, CSS, and vanilla JavaScript.
-- Backend: Node.js, Express, CORS, dotenv, and mysql2.
-- Database: MySQL.
-- Authentication: PBKDF2 password hashing using Node crypto and signed tokens.
+# Features
 
-## How To Run
+## Authentication and Security
+- User registration and login system
+- Password hashing using PBKDF2 with Node.js crypto
+- Signed JWT-style authentication tokens
+- Role-based access control for admin and student accounts
+- Protected backend API routes
 
-1. Import the database:
+## Flashcard Management
+- Create flashcards
+- Read/view flashcards
+- Edit flashcards
+- Delete flashcards
+- Organise flashcards into decks
+- Real-time live search filtering
+
+## Learning Features
+- Mark cards as Known or Need Practice
+- Store optional learning notes
+- Track learning history and progress
+- Student progress summaries
+- Admin dashboard for monitoring all students
+
+## User Experience
+- Single Page Application design
+- Immediate UI updates without page refresh
+- Responsive layout and consistent styling
+- Fast API interactions using asynchronous requests
+
+---
+
+# Business Logic and Entities
+
+The application contains CRUD operations across multiple conceptual entities:
+
+## Users
+Stores:
+- usernames
+- hashed passwords
+- account roles
+- account creation timestamps
+
+## Flashcards
+Stores:
+- questions
+- answers
+- associated user
+- deck assignment
+
+## Decks
+Stores:
+- deck titles
+- descriptions
+- ownership relationships
+
+## View History
+Stores:
+- study activity
+- learning progress
+- notes
+- CRUD activity history
+
+---
+
+# Technical Stack
+
+## Frontend
+- HTML5
+- CSS3
+- Vanilla JavaScript
+
+## Backend
+- Node.js
+- Express.js
+- mysql2
+- dotenv
+- cors
+
+## Database
+- MySQL
+
+## Authentication
+- PBKDF2 password hashing
+- Token-based authentication
+- Role-based authorisation
+
+---
+
+# How To Run The Application
+
+## 1. Import the database
+
+Open MySQL Workbench and run:
 
 ```sql
 SOURCE Backend/Assessment1Database.sql;
 ```
 
-2. Create or update `Backend/.env`:
+---
+
+## 2. Configure environment variables
+
+Create or update:
+
+```text
+Backend/.env
+```
+
+Add:
 
 ```env
 DB_HOST=localhost
@@ -36,50 +132,175 @@ DB_NAME=flashcard_app
 JWT_SECRET=choose-a-secret-value
 ```
 
-3. Start the backend:
+---
+
+## 3. Install backend dependencies
 
 ```bash
 cd Backend
 npm install
+```
+
+---
+
+## 4. Start backend server
+
+```bash
 npm run dev
 ```
 
-4. In a second terminal, start the frontend:
+Backend runs on:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 5. Start frontend
+
+Open a second terminal:
 
 ```bash
 cd Frontend
+npm install
 npm run dev
 ```
 
-5. Open the app:
+Frontend runs on:
 
 ```text
 http://localhost:8080
 ```
 
-The backend runs on `http://localhost:3000`.
+---
 
-## Demo Accounts
+# Demo Account Setup
 
-- Admin: `admin` / `password123`
-- Student: `student` / `password123`
+## Admin Account
+1. Register:
+   - Username: `admin`
+   - Password: `password123`
 
-## Folder Structure
+2. Promote account to admin in MySQL:
 
-- `Backend/server.js`: Express API, authentication, flashcard CRUD routes, and activity routes.
-- `Backend/Assessment1Database.sql`: MySQL database export with tables and seed data.
-- `Backend/package.json`: Backend dependencies and start script.
-- `Frontend/index.html`: Single HTML page for login and the app interface.
-- `Frontend/script.js`: Frontend state, API requests, live search, and immediate UI updates.
-- `Frontend/style.css`: Styling and responsive layout.
+```sql
+USE flashcard_app;
 
-## Entity Summary
+UPDATE users
+SET role = 'admin'
+WHERE username = 'admin';
+```
 
-- `users`: stores registered users, password hashes, roles, and creation time.
-- `flashcards`: stores flashcard questions and answers.
-- `view_history`: stores registration, login, CRUD, and student study activity.
-  It records whether a student marked a card as `known` or `not_known`, plus optional study notes.
+---
 
-## Workload Allocation
+## Student Account
 
-I worked individually for this assignment, so all tasks were completed by me. 
+Register:
+- Username: `student`
+- Password: `password123`
+
+---
+
+# Folder Structure
+
+## Backend
+
+### `server.js`
+Contains:
+- Express API routes
+- authentication logic
+- token handling
+- flashcard CRUD operations
+- admin routes
+- database migrations
+
+### `Assessment1Database.sql`
+Contains:
+- database schema
+- table definitions
+- relationships
+- foreign keys
+
+### `package.json`
+Backend dependencies and scripts.
+
+---
+
+## Frontend
+
+### `index.html`
+Main SPA structure and interface.
+
+### `script.js`
+Handles:
+- API requests
+- authentication
+- UI rendering
+- flashcard logic
+- live search
+- state management
+
+### `style.css`
+Application styling and responsive layout.
+
+---
+
+# Security Features
+
+- Passwords are never stored in plain text
+- PBKDF2 hashing with salt is used
+- Protected API endpoints require valid tokens
+- Admin-only routes are protected with role checks
+- Input validation is implemented on backend routes
+
+---
+
+# Error Handling
+
+The application includes:
+- login validation
+- registration validation
+- protected route handling
+- API error responses
+- invalid input handling
+- database error handling
+
+---
+
+# Professional Practices
+
+- Git version control used throughout development
+- Meaningful commits used during implementation
+- Environment variables used for database configuration
+- No sensitive credentials hardcoded into source files
+
+---
+
+# Workload Allocation
+
+This assignment was completed individually.
+
+All frontend, backend, database, authentication, and UI functionality was designed and implemented by:
+- Yousef El-Omar
+
+Files created and maintained individually:
+- Backend/server.js
+- Backend/Assessment1Database.sql
+- Frontend/index.html
+- Frontend/script.js
+- Frontend/style.css
+- README.md
+
+---
+
+# Future Improvements
+
+Potential future improvements include:
+- spaced repetition algorithms
+- flashcard sharing
+- image-based flashcards
+- password reset functionality
+- email verification
+- analytics dashboard
+- mobile optimisation
