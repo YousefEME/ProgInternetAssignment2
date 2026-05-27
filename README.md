@@ -109,7 +109,7 @@ Stores:
 Open MySQL Workbench and run:
 
 ```sql
-SOURCE Backend/Assessment1Database.sql;
+SOURCE Backend/Assessment2Database.sql;
 ```
 
 ---
@@ -129,7 +129,6 @@ DB_HOST=localhost
 DB_USER=root
 DB_PASS=your_mysql_password
 DB_NAME=flashcard_app
-JWT_SECRET=choose-a-secret-value
 ```
 
 ---
@@ -286,7 +285,7 @@ All frontend, backend, database, authentication, and UI functionality was design
 
 Files created and maintained individually:
 - Backend/server.js
-- Backend/Assessment1Database.sql
+- Backend/Assessment2Database.sql
 - Frontend/index.html
 - Frontend/script.js
 - Frontend/style.css

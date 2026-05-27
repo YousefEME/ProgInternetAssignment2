@@ -64,6 +64,7 @@ INSERT INTO users (username, password_hash, role) VALUES
 
 SET FOREIGN_KEY_CHECKS = 1;
 
+/* register as an admin with admin password 123 and then run this after registering as an admin */
 UPDATE users
 SET role = 'admin'
 WHERE username = 'admin';
