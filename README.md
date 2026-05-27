@@ -1,14 +1,14 @@
 # CardFlash
 
-CardFlash is a simple flashcard learning app for creating, searching, editing, deleting, and studying flashcards in the browser. It extends the Assignment 1 idea into a dynamic single-page app with a Node.js backend and MySQL database.
+CardFlash is a simple flashcard learning app for creating, searching, editing, deleting, and studying flashcards in the browser. It extends the Assignment 1 idea into a dynamic single page app with a Node.js backend and MySQL database.
 
 ## Features
 
-- Registration and login with hashed passwords and signed JWT-style tokens.
+- Registration and login with hashed passwords and signed JWT-style tokens. New students register first, then login separately.
 - Live search that filters flashcards immediately while the user types.
 - Full CRUD operations for flashcards: create, read, update, and delete.
-- Activity/history tracking for user actions such as login, create, update, delete, and card views.
-- Admin account can view all user activity; student accounts can view their own activity.
+- Learning history tracking for card reveals, Known, Need Practice, and optional study notes.
+- Admin account can view all students' learning history and latest progress summaries; admin study clicks are not counted as student learning.
 - Interface updates immediately after adding, editing, or deleting without refreshing the page.
 
 ## Technical Stack
@@ -77,12 +77,9 @@ The backend runs on `http://localhost:3000`.
 
 - `users`: stores registered users, password hashes, roles, and creation time.
 - `flashcards`: stores flashcard questions and answers.
-- `view_history`: stores login, registration, CRUD, and study activity.
+- `view_history`: stores registration, login, CRUD, and student study activity.
+  It records whether a student marked a card as `known` or `not_known`, plus optional study notes.
 
 ## Workload Allocation
 
-Update this section with your group member names before submission.
-
-- Member 1: frontend interface, `Frontend/index.html`, `Frontend/style.css`, `Frontend/script.js`.
-- Member 2: backend API and database, `Backend/server.js`, `Backend/Assessment1Database.sql`.
-- Member 3: README, testing, demo preparation.
+I worked individually for this assignment, so all tasks were completed by me. 

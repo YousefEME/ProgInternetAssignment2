@@ -1,8 +1,5 @@
-/**
- * CardFlash - Student Study Application Frontend Logic
- * Handles authentication, deck filtering, flashcard rendering with 3D flips,
- * and duplicate-protected student learning status updates.
- */
+//script for the frontend of the flashcard application. It manages user authentication, flashcard CRUD operations, study mode with progress tracking, and deck management. The code interacts with a backend API to persist data and update the UI accordingly. 
+// It also includes a custom modal for delete confirmation and handles different views for students and admins.
 
 const API_URL = 'http://localhost:3000';
 
@@ -593,7 +590,7 @@ confirmDeleteButton.addEventListener('click', async () => {
         await deleteFlashcard(id);
     }
 });
-
+// Deck-related event listeners for creating new decks and filtering cards by selected deck
 deckForm.addEventListener('submit', createDeck);
 deckFilter.addEventListener('change', () => {
     selectedDeckId = deckFilter.value;

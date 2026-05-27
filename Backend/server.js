@@ -12,6 +12,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-for-submission';
 
+// Create a connection pool so multiple requests can query the database concurrently
 const db = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
@@ -21,6 +22,8 @@ const db = mysql.createPool({
     connectionLimit: 10
 });
 
+// Encode a string to base64url format (URL-safe base64 with no padding)
+// Used when building JWT header and payload
 function base64Url(input) {
     return Buffer.from(input)
         .toString('base64')
@@ -29,16 +32,23 @@ function base64Url(input) {
         .replace(/\//g, '_');
 }
 
+// Decode a base64url string back to a UTF-8 string
+// Used when verifying and reading a JWT payload
 function base64UrlDecode(input) {
     const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
     return Buffer.from(base64, 'base64').toString('utf8');
 }
 
+// Hash a password using PBKDF2 with a random salt
+// If a salt is provided (e.g. when verifying), it uses that instead of generating a new one
+// Returns a string in the format "salt:hash"
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
     const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
     return `${salt}:${hash}`;
 }
 
+// Compare a plaintext password against a stored "salt:hash" string
+// Uses timing-safe comparison to prevent timing attacks
 function verifyPassword(password, storedPassword) {
     const [salt, originalHash] = storedPassword.split(':');
     const attemptedHash = hashPassword(password, salt).split(':')[1];
@@ -46,6 +56,8 @@ function verifyPassword(password, storedPassword) {
     return crypto.timingSafeEqual(Buffer.from(originalHash), Buffer.from(attemptedHash));
 }
 
+// Create a signed JWT token for a user containing their id, username, role, and expiry
+// Token expires after 4 hours
 function createToken(user) {
     const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
     const payload = base64Url(JSON.stringify({
@@ -54,6 +66,8 @@ function createToken(user) {
         role: user.role,
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 4
     }));
+
+    // Sign the header and payload together using HMAC-SHA256
     const signature = crypto
         .createHmac('sha256', JWT_SECRET)
         .update(`${header}.${payload}`)
@@ -65,11 +79,14 @@ function createToken(user) {
     return `${header}.${payload}.${signature}`;
 }
 
+// Verify a JWT token and return the decoded user payload if valid
+// Returns null if the token is missing, tampered with, or expired
 function verifyToken(token) {
     try {
         const [header, payload, signature] = token.split('.');
         if (!header || !payload || !signature) return null;
 
+        // Recompute the expected signature and compare against the provided one
         const expectedSignature = crypto
             .createHmac('sha256', JWT_SECRET)
             .update(`${header}.${payload}`)
@@ -81,6 +98,8 @@ function verifyToken(token) {
         if (signature !== expectedSignature) return null;
 
         const user = JSON.parse(base64UrlDecode(payload));
+
+        // Reject the token if it has passed its expiry timestamp
         if (user.exp < Math.floor(Date.now() / 1000)) return null;
         return user;
     } catch (err) {
@@ -88,6 +107,8 @@ function verifyToken(token) {
     }
 }
 
+// Middleware: blocks requests that don't have a valid JWT in the Authorization header
+// Attaches the decoded user to req.user so route handlers can access it
 function requireAuth(req, res, next) {
     const token = req.headers.authorization?.replace('Bearer ', '');
     const user = token ? verifyToken(token) : null;
@@ -100,6 +121,7 @@ function requireAuth(req, res, next) {
     next();
 }
 
+// Middleware: blocks non-admin users from accessing admin-only routes
 function requireAdmin(req, res, next) {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Admin access required.' });
@@ -107,6 +129,7 @@ function requireAdmin(req, res, next) {
     next();
 }
 
+// Middleware: blocks non-student users from recording learning progress
 function requireStudent(req, res, next) {
     if (req.user.role !== 'student') {
         return res.status(403).json({ message: 'Only students can record learning progress.' });
@@ -114,6 +137,8 @@ function requireStudent(req, res, next) {
     next();
 }
 
+// Insert a record into view_history to log user activity
+// flashcardId, status and note are optional depending on the action type
 async function logActivity(userId, action, flashcardId = null, status = null, note = null) {
     await db.query(
         'INSERT INTO view_history (user_id, flashcard_id, action, status, note) VALUES (?, ?, ?, ?, ?)',
@@ -121,16 +146,21 @@ async function logActivity(userId, action, flashcardId = null, status = null, no
     );
 }
 
+// Check whether the users table has an email column
+// Used during registration to handle databases with and without the email column
 async function usersTableHasEmail() {
     const [columns] = await db.query("SHOW COLUMNS FROM users LIKE 'email'");
     return columns.length > 0;
 }
 
+// Health check endpoint to confirm the API and database connection are working
 app.get('/health', async (req, res) => {
     await db.query('SELECT 1');
     res.json({ message: 'CardFlash API is running' });
 });
 
+// Register a new student account with a username and password
+// Rejects duplicate usernames and passwords shorter than 6 characters
 app.post('/auth/register', async (req, res) => {
     const { username, password } = req.body;
 
@@ -144,6 +174,7 @@ app.post('/auth/register', async (req, res) => {
             return res.status(409).json({ message: 'That username is already taken.' });
         }
 
+        // Insert with or without email column depending on the database schema
         const hasEmail = await usersTableHasEmail();
         const [result] = hasEmail
             ? await db.query(
@@ -154,6 +185,7 @@ app.post('/auth/register', async (req, res) => {
                 'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
                 [username, hashPassword(password), 'student']
             );
+
         await logActivity(result.insertId, 'register');
         res.status(201).json({ message: 'Account created. Please login with your new student account.' });
     } catch (err) {
@@ -161,6 +193,8 @@ app.post('/auth/register', async (req, res) => {
     }
 });
 
+// Log in with a username and password
+// Returns a JWT token and basic user info on success
 app.post('/auth/login', async (req, res) => {
     const { username, password } = req.body;
 
@@ -175,6 +209,8 @@ app.post('/auth/login', async (req, res) => {
         );
         const user = users[0];
 
+        // Return the same error message whether the username or password is wrong
+        // to avoid leaking which one is incorrect
         if (!user || !verifyPassword(password, user.password_hash)) {
             return res.status(401).json({ message: 'Invalid username or password.' });
         }
@@ -189,7 +225,7 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-// Fetch all flashcard decks. Maps the database column "title" to "name" to keep the frontend happy.
+// Fetch all flashcard decks, mapping "title" to "name" to match the frontend
 app.get('/decks', requireAuth, async (req, res) => {
     try {
         const [decks] = await db.query('SELECT id, title AS name FROM decks ORDER BY title');
@@ -200,14 +236,17 @@ app.get('/decks', requireAuth, async (req, res) => {
     }
 });
 
-// Create a new deck. Inserts into the pre-existing "title" column to retain database compatibility.
+// Create a new deck owned by the logged-in user
 app.post('/decks', requireAuth, async (req, res) => {
     const { name } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ message: 'Deck name is required.' });
     }
     try {
-        const [result] = await db.query('INSERT INTO decks (title, user_id) VALUES (?, ?)', [name.trim(), req.user.id]);
+        const [result] = await db.query(
+            'INSERT INTO decks (title, user_id) VALUES (?, ?)',
+            [name.trim(), req.user.id]
+        );
         res.status(201).json({ id: result.insertId, name: name.trim() });
     } catch (err) {
         console.error('Error creating deck:', err);
@@ -215,10 +254,12 @@ app.post('/decks', requireAuth, async (req, res) => {
     }
 });
 
-// Fetch flashcards filtered by search query and/or deck selection.
+// Fetch flashcards with optional search and deck filter
+// Also joins in the most recent practice status for the logged-in user
 app.get('/cards', requireAuth, async (req, res) => {
     const search = `%${req.query.search || ''}%`;
     const deckId = req.query.deck_id;
+
     let query = `
         SELECT f.id, f.question, f.answer, f.user_id, f.deck_id, u.username AS created_by,
                latest.status AS learning_status, latest.note AS latest_note
@@ -235,7 +276,7 @@ app.get('/cards', requireAuth, async (req, res) => {
     `;
     const params = [req.user.id, search, search];
 
-    // Filter by deck: handles unassigned deck state ('none') vs specific deck ID numbers.
+    // 'none' filters for cards with no deck assigned, a specific ID filters by that deck
     if (deckId === 'none') {
         query += ` AND f.deck_id IS NULL`;
     } else if (deckId && deckId !== 'all') {
@@ -254,6 +295,7 @@ app.get('/cards', requireAuth, async (req, res) => {
     }
 });
 
+// Create a new flashcard, optionally assigning it to a deck
 app.post('/cards', requireAuth, async (req, res) => {
     const { question, answer, deck_id } = req.body;
 
@@ -281,6 +323,7 @@ app.post('/cards', requireAuth, async (req, res) => {
     }
 });
 
+// Update an existing flashcard's question, answer, and deck assignment
 app.put('/cards/:id', requireAuth, async (req, res) => {
     const { question, answer, deck_id } = req.body;
     const { id } = req.params;
@@ -306,6 +349,7 @@ app.put('/cards/:id', requireAuth, async (req, res) => {
     }
 });
 
+// Delete a flashcard by ID, logging the action before removing it
 app.delete('/cards/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const [cards] = await db.query('SELECT id FROM flashcards WHERE id = ?', [id]);
@@ -319,11 +363,13 @@ app.delete('/cards/:id', requireAuth, async (req, res) => {
     res.json({ message: 'Deleted' });
 });
 
+// View logging is disabled, card flipping is handled purely on the frontend
 app.post('/cards/:id/view', requireAuth, async (req, res) => {
-    // Disabled view logging to history per user request. Pure UI flip only.
     res.json({ message: 'View logging disabled' });
 });
 
+// Record a student's practice result (known or not_known) for a flashcard
+// Updates the existing record if one exists, otherwise inserts a new one
 app.post('/cards/:id/progress', requireAuth, requireStudent, async (req, res) => {
     const { status, note = '' } = req.body;
     const allowedStatuses = ['known', 'not_known'];
@@ -338,25 +384,22 @@ app.post('/cards/:id/progress', requireAuth, requireStudent, async (req, res) =>
             return res.status(404).json({ message: 'Flashcard not found.' });
         }
 
-        // Check if there is an existing practice record for this user and flashcard
         const [existing] = await db.query(
             "SELECT id FROM view_history WHERE user_id = ? AND flashcard_id = ? AND action = 'practice' ORDER BY id ASC",
             [req.user.id, req.params.id]
         );
 
         if (existing.length) {
-            // Update the primary record
+            // Update the earliest practice record and delete any duplicates
             await db.query(
                 "UPDATE view_history SET status = ?, note = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?",
                 [status, note.trim() || null, existing[0].id]
             );
-            // Clean up any extra duplicate practice rows if they exist to keep the history clean
             if (existing.length > 1) {
                 const extraIds = existing.slice(1).map(r => r.id);
                 await db.query("DELETE FROM view_history WHERE id IN (?)", [extraIds]);
             }
         } else {
-            // Insert a new practice record
             await logActivity(req.user.id, 'practice', req.params.id, status, note.trim() || null);
         }
 
@@ -371,6 +414,7 @@ app.post('/cards/:id/progress', requireAuth, requireStudent, async (req, res) =>
     }
 });
 
+// Return the last 15 activity records for the logged-in user, excluding view events
 app.get('/history', requireAuth, async (req, res) => {
     const [history] = await db.query(
         `SELECT h.id, h.flashcard_id, h.action, h.status, h.note, h.created_at, u.username, f.question
@@ -385,6 +429,7 @@ app.get('/history', requireAuth, async (req, res) => {
     res.json(history);
 });
 
+// Admin only: return the last 50 activity records across all students
 app.get('/admin/history', requireAuth, requireAdmin, async (req, res) => {
     const [history] = await db.query(
         `SELECT h.id, h.flashcard_id, h.action, h.status, h.note, h.created_at, u.username, f.question
@@ -398,6 +443,8 @@ app.get('/admin/history', requireAuth, requireAdmin, async (req, res) => {
     res.json(history);
 });
 
+// Admin only: return a summary of each student's known vs not_known card counts
+// and when they last practised
 app.get('/admin/progress-summary', requireAuth, requireAdmin, async (req, res) => {
     const [summary] = await db.query(
         `SELECT u.username,
@@ -424,14 +471,15 @@ app.get('/admin/progress-summary', requireAuth, requireAdmin, async (req, res) =
     res.json(summary);
 });
 
+// Global error handler for any unhandled errors thrown in route handlers
 app.use((err, req, res, next) => {
     console.error(err);
     res.status(500).json({ message: 'Something went wrong on the server.' });
 });
 
-// Database Auto-Migration: Sets up the tables at startup if they don't already exist.
+// Run database migrations on startup to create any missing tables or columns
 async function runMigrations() {
-    // Recreates the decks table with title/description parameters matching existing tables.
+    // Create the decks table if it does not already exist
     await db.query(`
         CREATE TABLE IF NOT EXISTS decks (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -444,7 +492,7 @@ async function runMigrations() {
         )
     `);
 
-    // Checks and alters the flashcards schema dynamically to add deck association.
+    // Add deck_id to flashcards if it is missing, linking cards to decks
     const [columns] = await db.query("SHOW COLUMNS FROM flashcards LIKE 'deck_id'");
     if (columns.length === 0) {
         await db.query("ALTER TABLE flashcards ADD COLUMN deck_id INT NULL");
