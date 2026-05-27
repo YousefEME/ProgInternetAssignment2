@@ -181,7 +181,7 @@ http://localhost:8080
    - Username: `admin`
    - Password: `password123`
 
-2. Promote account to admin in MySQL:
+2. Open a new MYSQL tab and promote account to admin in MySQL by running the code below, thensign in using the admin as the username and password123 as the password:
 
 ```sql
 USE flashcard_app;
